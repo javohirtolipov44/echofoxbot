@@ -37,4 +37,13 @@ async def get_users_count():
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("SELECT COUNT(*) FROM users")
         result = await cursor.fetchone()
+
         return result[0] if result else 0
+
+async def get_all_users():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            "SELECT user_id FROM users"
+        )
+        rows = await cursor.fetchall()
+        return [row[0] for row in rows]
