@@ -1,6 +1,7 @@
 import asyncio
+import time
 from aiogram import Router, F, Bot
-from aiogram.exceptions import TelegramRetryAfter
+from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
@@ -275,6 +276,7 @@ async def anime_chanel_list(callback: CallbackQuery):
 
     await callback.message.edit_text(text, disable_web_page_preview=True)
     await callback.message.answer("Admin panelga xush kelibsiz!!!", reply_markup=admin_kb)
+
 
 
 
