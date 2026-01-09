@@ -80,18 +80,51 @@ async def confirm_broadcast(
     )
 
     await call.answer("🚀 Broadcast boshlandi")
-    
+    await state.clear()
 
 async def broadcast_copy(bot: Bot, from_chat: int, msg_id: int, users: list[int]):
-    for user_id in users:
+    start_time = time.monotonic()   # ⏱ boshlanish vaqti
+    success = 0
+    failed = 0
+
+    total = len(users)
+
+    for i, user_id in enumerate(users, start=1):
         try:
             await bot.copy_message(user_id, from_chat, msg_id)
+            success += 1
         except TelegramRetryAfter as e:
             await asyncio.sleep(e.retry_after)
-        except:
-            pass
-        await asyncio.sleep(0.33)
-    await state.clear()
+            try:
+                await bot.copy_message(user_id, from_chat, msg_id)
+                success += 1
+            except:
+                failed += 1
+        except TelegramForbiddenError:
+            failed += 1
+        except Exception as e:
+            failed += 1
+            print(f"Xato {user_id}: {e}")
+
+        await asyncio.sleep(0.05)  # ⚡ tez, xavfsiz
+
+    # ⏱ tugash vaqti
+    elapsed = time.monotonic() - start_time
+
+    minutes, seconds = divmod(int(elapsed), 60)
+
+    report = (
+        "✅ Broadcast yakunlandi\n\n"
+        f"👥 Jami foydalanuvchilar: {total}\n"
+        f"📬 Yuborildi: {success}\n"
+        f"❌ Xatolik: {failed}\n"
+        f"⏱ Sarflangan vaqt: {minutes} daqiqa {seconds} soniya"
+    )
+
+    # 📣 Admin(lar)ga xabar berish
+    await bot.send_message(from_chat, report)
+        
+    
     
 
 @router.callback_query(F.data == "anime_chanel")
@@ -242,5 +275,6 @@ async def anime_chanel_list(callback: CallbackQuery):
 
     await callback.message.edit_text(text, disable_web_page_preview=True)
     await callback.message.answer("Admin panelga xush kelibsiz!!!", reply_markup=admin_kb)
+
 
 
