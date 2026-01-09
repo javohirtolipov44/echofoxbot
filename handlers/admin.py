@@ -91,6 +91,7 @@ async def broadcast_copy(bot: Bot, from_chat: int, msg_id: int, users: list[int]
     total = len(users)
 
     for i, user_id in enumerate(users, start=1):
+        print(i, user_id)
         try:
             await bot.copy_message(user_id, from_chat, msg_id)
             success += 1
@@ -276,6 +277,7 @@ async def anime_chanel_list(callback: CallbackQuery):
 
     await callback.message.edit_text(text, disable_web_page_preview=True)
     await callback.message.answer("Admin panelga xush kelibsiz!!!", reply_markup=admin_kb)
+
 
 
 
