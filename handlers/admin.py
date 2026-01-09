@@ -1,15 +1,19 @@
-from aiogram import Router, F
+import asyncio
+from aiogram import Router, F, Bot
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from baza.homiy import add_homiy, del_homiy, get_all_homiy
-from baza.users import get_users_count
+from baza.users import get_users_count, get_all_users
 from baza.chanel import get_chanel, add_chanel, del_chanel, get_all_chanels
 from config import ADMINS
 from keyboards.admin import admin_kb
+from keyboards.message import message_kb
 from keyboards.homiy import homiy_kb
 from keyboards.anime import anime_kb
 from states.homiy_state import HomiyState
+from states.admin_state import AdminState
 from states.anime_chanel_state import AnimeChanelState
 
 router = Router()
@@ -29,6 +33,66 @@ async def statistika(callback: CallbackQuery):
         return
     user = await get_users_count()
     await callback.message.edit_text(f"Barcha obunachilar: {user}", reply_markup=admin_kb)
+
+@router.callback_query(F.data == "send_message")
+async def send_message(callback: CallbackQuery, state: FSMContext):
+    if not callback.from_user.id in ADMINS:
+        await callback.answer("Siz admin emassiz")
+        return
+    await state.set_state(AdminState.send_message)
+    await callback.message.edit_text("Xabaringizni yuboring")
+
+@router.message(AdminState.send_message)
+async def send_message_finish(message: Message, state: FSMContext):
+    if message.from_user.id not in ADMINS:
+        return
+    await state.update_data(
+    from_chat_id=message.chat.id,
+    message_id=message.message_id
+)
+    await message.answer("Xabar tasdiqlandi yuboraymi?", reply_markup=message_kb)
+
+@router.callback_query(F.data == "send")
+async def confirm_broadcast(
+    call: CallbackQuery,
+    state: FSMContext,
+    bot: Bot
+):
+    if call.from_user.id not in ADMINS:
+        return
+
+    data = await state.get_data()
+    from_chat_id = data.get("from_chat_id")
+    message_id = data.get("message_id")
+
+    
+
+    user_ids = await get_all_users()  # PostgreSQL async
+
+    await call.message.edit_text(
+        f"⏳ Xabar yuborilmoqda...\n"
+        f"👥 Foydalanuvchilar: {len(user_ids)}"
+    )
+
+    # 🔥 ASOSIY JOY
+    asyncio.create_task(
+        broadcast_copy(bot, from_chat_id, message_id, user_ids)
+    )
+
+    await call.answer("🚀 Broadcast boshlandi")
+    
+
+async def broadcast_copy(bot: Bot, from_chat: int, msg_id: int, users: list[int]):
+    for user_id in users:
+        try:
+            await bot.copy_message(user_id, from_chat, msg_id)
+        except TelegramRetryAfter as e:
+            await asyncio.sleep(e.retry_after)
+        except:
+            pass
+        await asyncio.sleep(0.33)
+    await state.clear()
+    
 
 @router.callback_query(F.data == "anime_chanel")
 async def anime_chanel(callback: CallbackQuery):
@@ -178,4 +242,5 @@ async def anime_chanel_list(callback: CallbackQuery):
 
     await callback.message.edit_text(text, disable_web_page_preview=True)
     await callback.message.answer("Admin panelga xush kelibsiz!!!", reply_markup=admin_kb)
+
 
